@@ -3,7 +3,6 @@ import axios from "axios";
 
 import Search from "./components/Search.jsx";
 
-// Sposta le funzioni di utility fuori dal componente
 const getWeatherDescription = (code) => {
   const weatherCodes = {
     0: "Clear sky",
@@ -37,7 +36,7 @@ const getWeatherIcon = (code) => {
   if (code === 0 || code === 1) return "icon-sunny.webp";
   if (code === 2) return "icon-partly-cloudy.webp";
   if (code === 3) return "icon-overcast.webp";
-  if (code >= 3 && code <= 66) return "icon-fog.webp";
+  if (code >= 45 && code <= 48) return "icon-fog.webp"; // Solo per nebbia
   if (code >= 51 && code <= 67) return "icon-rain.webp";
   if (code >= 71 && code <= 77) return "icon-snow.webp";
   if (code >= 80 && code <= 82) return "icon-drizzle.webp";
@@ -54,12 +53,14 @@ function App() {
   const [longitude, setLongitude] = useState(null);
   const [weatherData, setWeatherData] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentdailyArrTime, setCurrentdailyArrTime] = useState([]);
-  const [currentdailyArrTemp, setCurrentdailyArrTemp] = useState([]);
+  const [currentDailyArrTime, setCurrentDailyArrTime] = useState([]);
+  const [currentDailyArrTemp, setCurrentDailyArrTemp] = useState([]);
   const [rawHourlyWeatherCodes, setRawHourlyWeatherCodes] = useState([]);
   const [rawDailyWeatherCodes, setRawDailyWeatherCodes] = useState([]);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentDay, setCurrentDay] = useState(0);
+  const [selectedDay, setSelectedDay] = useState(0);
 
   function handleCityClick(city) {
     setSearchTerm(city.name);
@@ -80,41 +81,50 @@ function App() {
             `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,apparent_temperature,weather_code&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&forecast_days=7`
           );
 
-          const locationResponse = await axios.get(
-            `https://geocoding-api.open-meteo.com/v1/search?name=${location}&count=10&language=en&format=json`
-          );
-
           setWeatherData(response.data);
 
-          const currWeather = response.data.current;
-          const currentTime = currWeather.time;
-          const currentHour = new Date(currentTime).getHours();
+          const hourlyTimes = response.data.hourly?.time || [];
+          const hourlyTemps = response.data.hourly?.temperature_2m || [];
+          const hourlyCodes = response.data.hourly?.weather_code || [];
 
-          const dailyArrTime = response.data.hourly.time;
-          const dailyArrTemp = response.data.hourly.temperature_2m;
+          let startIndex;
+          let offset = 0; // Quante ore "saltare" dall'inizio del giorno
 
-          const dailyIndex = dailyArrTime.findIndex((timeStr) => {
-            return new Date(timeStr).getHours() === currentHour;
-          });
+          if (selectedDay === 0) {
+            // PER OGGI: dall'ora corrente
+            const now = new Date();
+            const currentHour = now.getHours();
 
-          const hourlyWeatherCodes = response.data.hourly.weather_code || [];
-          const dailyWeatherCodes = response.data.daily?.weather_code || [];
+            startIndex = hourlyTimes.findIndex((timeStr) => {
+              const time = new Date(timeStr);
+              return time.getHours() === currentHour;
+            });
 
-          const safeIndex = dailyIndex === -1 ? 0 : dailyIndex;
+            if (startIndex === -1) startIndex = 0;
+          } else {
+            // PER GIORNI FUTURI: dalle 8:00 (ore diurne)
+            startIndex = selectedDay * 24;
+            offset = 8; // Salta le prime 8 ore (00:00-07:00)
+          }
 
-          const rawTimes = dailyArrTime.slice(safeIndex, safeIndex + 8);
-          const rawTemps = dailyArrTemp.slice(safeIndex, safeIndex + 8);
+          // Aggiungi l'offset
+          const actualStartIndex = startIndex + offset;
 
-          const slicedHourlyCodes = hourlyWeatherCodes.slice(
-            safeIndex,
-            safeIndex + 8
+          // Prendi le prossime 8 ore
+          const dayTimes = hourlyTimes.slice(
+            actualStartIndex,
+            actualStartIndex + 8
           );
-          const slicedDailyCodes = dailyWeatherCodes.slice(0, 7); // Prendi i primi 7 giorni
+          const dayTemps = hourlyTemps.slice(
+            actualStartIndex,
+            actualStartIndex + 8
+          );
+          const dayCodes = hourlyCodes.slice(
+            actualStartIndex,
+            actualStartIndex + 8
+          );
 
-          setRawHourlyWeatherCodes(slicedHourlyCodes);
-          setRawDailyWeatherCodes(slicedDailyCodes);
-
-          const formattedTimes = rawTimes.map((ts) =>
+          const formattedTimes = dayTimes.map((ts) =>
             new Date(ts).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
@@ -122,27 +132,43 @@ function App() {
             })
           );
 
-          setCurrentdailyArrTime(formattedTimes);
-          setCurrentdailyArrTemp(rawTemps);
+          setCurrentDailyArrTime(formattedTimes);
+          setCurrentDailyArrTemp(dayTemps);
+          setRawHourlyWeatherCodes(dayCodes);
 
-          // Date formatting
-          const currentDateData = currWeather?.time;
-          const date = new Date(currentDateData);
+          // Data da mostrare
+          if (selectedDay === 0) {
+            const currentWeather = response.data.current;
+            const currentTime = currentWeather.time;
+            const date = new Date(currentTime);
 
-          const formattedDate = date.toLocaleDateString(undefined, {
-            weekday: "long",
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          });
+            const formattedDate = date.toLocaleDateString(undefined, {
+              weekday: "long",
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            });
 
-          const formattedTime = date.toLocaleTimeString(undefined, {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          });
+            const formattedTime = date.toLocaleTimeString(undefined, {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            });
 
-          setCurrentDate(`${formattedDate} • ${formattedTime}`);
+            setCurrentDate(`${formattedDate} • ${formattedTime}`);
+          } else {
+            const dayDate = new Date(dayTimes[0]);
+            const formattedDate = dayDate.toLocaleDateString(undefined, {
+              weekday: "long",
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            });
+            setCurrentDate(formattedDate);
+          }
+
+          const dailyWeatherCodes = response.data.daily?.weather_code || [];
+          setRawDailyWeatherCodes(dailyWeatherCodes.slice(0, 7));
         } catch (err) {
           setError(err.message);
           console.error("Error fetching weather:", err);
@@ -155,7 +181,7 @@ function App() {
         fetchWeather();
       }
     },
-    [latitude, longitude, location]
+    [latitude, longitude, location, selectedDay]
   );
 
   // Current weather Variables
@@ -163,6 +189,7 @@ function App() {
   const currentHumidity = weatherData.current?.relative_humidity_2m;
   const currentWindSpeed = weatherData.current?.wind_speed_10m;
   const currentPrecipitation = weatherData.current?.precipitation;
+
   const feelsLike = weatherData.current?.apparent_temperature || currentTemp;
   const currentWeatherCode = weatherData.current?.weather_code || 0;
   const description = getWeatherDescription(currentWeatherCode);
@@ -172,14 +199,11 @@ function App() {
   const dailyMax = weatherData.daily?.temperature_2m_max || [];
   const dailyMin = weatherData.daily?.temperature_2m_min || [];
 
-  // Hourly Forecast Variables - ora usa l'array di codici
-  // hourlyIcon non è più necessario come singola icona
-
   if (error) {
     return (
       <div className="min-h-screen bg-[#03012dff] text-white flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Error</h2>
+          <h2 className="text-2xl font-bold mb-2">Something went wrong</h2>
           <p className="text-gray-400">{error}</p>
         </div>
       </div>
@@ -226,9 +250,8 @@ function App() {
                 <CurrentWeather
                   location={location}
                   currentDate={currentDate}
-                  currentTemp={currentTemp}
-                  icon={currentIcon}
-                  description={description}
+                  weatherData={weatherData}
+                  selectedDay={selectedDay}
                 />
                 <CurrentWeatherMetrics
                   currentHumidity={currentHumidity}
@@ -245,9 +268,11 @@ function App() {
 
               <aside className="lg:col-span-3 mt-6 lg:my-auto">
                 <HourlyForecast
-                  currentdailyArrTime={currentdailyArrTime}
-                  currentdailyArrTemp={currentdailyArrTemp}
+                  currentdailyArrTime={currentDailyArrTime}
+                  currentdailyArrTemp={currentDailyArrTemp}
                   hourlyWeatherCodes={rawHourlyWeatherCodes}
+                  selectedDay={selectedDay}
+                  setSelectedDay={setSelectedDay}
                 />
               </aside>
             </div>
@@ -278,12 +303,125 @@ function Logo() {
 }
 
 function TempUnits() {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState("metric");
+
+  const handleUnitSelect = (unit) => {
+    setSelectedUnit(unit);
+    setIsDropdownOpen(false);
+  };
+
+  function convertToFarhenheight(c) {
+    return (c * 9) / 5 + 32;
+  }
   return (
-    <button className="flex items-center gap-2 py-2 px-3 bg-[#3d3b5eff] rounded-lg hover:bg-[#4a4868] transition-colors">
-      <img className="w-5 h-5" src="icon-units.svg" alt="Temperature units" />
-      <span className="text-sm">Units</span>
-      <img className="w-4 h-4" src="icon-dropdown.svg" alt="Dropdown" />
-    </button>
+    <div className="relative">
+      <button
+        className="flex items-center gap-2 py-2 px-3 bg-[#3d3b5eff] rounded-lg hover:bg-[#4a4868] transition-colors"
+        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+      >
+        <img className="w-5 h-5" src="icon-units.svg" alt="Temperature units" />
+        <span className="text-sm">Units</span>
+        <img
+          className={`w-4 h-4 transition-transform ${
+            isDropdownOpen ? "rotate-180" : ""
+          }`}
+          src="icon-dropdown.svg"
+          alt="Dropdown"
+        />
+      </button>
+
+      {isDropdownOpen && (
+        <div className="absolute right-0 mt-2 w-64 bg-[#3d3b5eff] rounded-lg shadow-lg z-10 p-4">
+          {/* Temperature */}
+          <div className="mb-4">
+            <h3 className="text-xs text-[#aeaeb7ff] uppercase mb-2">
+              Temperature
+            </h3>
+            <div className="flex gap-2">
+              <button
+                className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
+                  selectedUnit === "metric"
+                    ? "bg-[#4455daff] text-white"
+                    : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
+                }`}
+                onClick={() => handleUnitSelect("metric")}
+              >
+                °C
+              </button>
+              <button
+                className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
+                  selectedUnit === "imperial"
+                    ? "bg-[#4455daff] text-white"
+                    : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
+                }`}
+                onClick={() => handleUnitSelect("imperial")}
+              >
+                °F
+              </button>
+            </div>
+          </div>
+
+          {/* Wind Speed */}
+          <div className="mb-4">
+            <h3 className="text-xs text-[#aeaeb7ff] uppercase mb-2">
+              Wind Speed
+            </h3>
+            <div className="flex gap-2">
+              <button
+                className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
+                  selectedUnit === "metric"
+                    ? "bg-[#4455daff] text-white"
+                    : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
+                }`}
+                onClick={() => handleUnitSelect("metric")}
+              >
+                km/h
+              </button>
+              <button
+                className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
+                  selectedUnit === "imperial"
+                    ? "bg-[#4455daff] text-white"
+                    : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
+                }`}
+                onClick={() => handleUnitSelect("imperial")}
+              >
+                mph
+              </button>
+            </div>
+          </div>
+
+          {/* Precipitation */}
+          <div>
+            <h3 className="text-xs text-[#aeaeb7ff] uppercase mb-2">
+              Precipitation
+            </h3>
+            <div className="flex gap-2">
+              <button
+                className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
+                  selectedUnit === "metric"
+                    ? "bg-[#4455daff] text-white"
+                    : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
+                }`}
+                onClick={() => handleUnitSelect("metric")}
+              >
+                mm
+              </button>
+              <button
+                className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
+                  selectedUnit === "imperial"
+                    ? "bg-[#4455daff] text-white"
+                    : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
+                }`}
+                onClick={() => handleUnitSelect("imperial")}
+              >
+                in
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -296,15 +434,44 @@ function Loader() {
   );
 }
 
-function CurrentWeather({
-  location,
-  currentDate,
-  currentTemp,
-  icon,
-  description,
-}) {
+function CurrentWeather({ location, currentDate, weatherData, selectedDay }) {
+  const dailyMax = weatherData.daily?.temperature_2m_max || [];
+  const dailyMin = weatherData.daily?.temperature_2m_min || [];
+  const dailyCodes = weatherData.daily?.weather_code || [];
+
+  let currentTemp, description, icon;
+  if (selectedDay === 0) {
+    // Oggi: usa dati current
+    currentTemp = weatherData.current?.temperature_2m;
+    const currentCode = weatherData.current?.weather_code || 0;
+    description = getWeatherDescription(currentCode);
+    icon = getWeatherIcon(currentCode);
+  } else {
+    // Giorni futuri: calcola media e usa daily
+    const maxTemp = dailyMax[selectedDay] || 0;
+    const minTemp = dailyMin[selectedDay] || 0;
+    currentTemp = Math.round((maxTemp + minTemp) / 2); // Media
+    const dayCode = dailyCodes[selectedDay] || 0;
+    description = getWeatherDescription(dayCode);
+    icon = getWeatherIcon(dayCode);
+  }
+
+  // Get base URL for GitHub Pages
+  const baseUrl = import.meta.env.PROD ? "/React-Weather-App/" : "/";
+
+  const backgroundStyle = {
+    backgroundImage: `url('${baseUrl}bg-today-small.svg')`,
+  };
+
+  const backgroundStyleLarge = {
+    backgroundImage: `url('${baseUrl}bg-today-large.svg')`,
+  };
+
   return (
-    <div className="relative w-full min-h-[320px] bg-cover bg-center rounded-2xl overflow-hidden shadow-xl bg-[url('bg-today-small.svg')] md:bg-[url('bg-today-large.svg')] content-center">
+    <div
+      className="relative w-full min-h-[320px] bg-cover bg-center rounded-2xl overflow-hidden shadow-xl content-center"
+      style={window.innerWidth >= 768 ? backgroundStyleLarge : backgroundStyle}
+    >
       <div className="absolute inset-0 bg-black/20"></div>
 
       <div className="relative h-full p-6 flex justify-between items-center">
@@ -400,25 +567,76 @@ function HourlyForecast({
   currentdailyArrTime,
   currentdailyArrTemp,
   hourlyWeatherCodes,
+  selectedDay,
+  setSelectedDay,
 }) {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const days = [
+    { name: "Today", index: 0 },
+    { name: "Tomorrow", index: 1 },
+    { name: "Wednesday", index: 2 },
+    { name: "Thursday", index: 3 },
+    { name: "Friday", index: 4 },
+    { name: "Saturday", index: 5 },
+    { name: "Sunday", index: 6 },
+  ];
+
+  const daysToShow = days;
+
+  const handleDaySelect = (dayIndex) => {
+    setSelectedDay(dayIndex);
+    setIsDropdownOpen(false);
+  };
+
   const hours = currentdailyArrTime.map((time, index) => ({
-    time: index === 0 ? "Now" : time,
+    time: index === 0 && selectedDay === 0 ? "Now" : time,
     temp: currentdailyArrTemp[index] || "--",
     icon: getWeatherIcon(hourlyWeatherCodes[index] || 0),
   }));
 
   return (
     <div className="w-full bg-[#272541ff] rounded-lg py-4 px-4">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 relative">
         <h2 className="text-xl font-semibold">Hourly Forecast</h2>
-        <button className="flex items-center gap-2 py-2 px-3 bg-[#3d3b5eff] rounded-lg hover:bg-[#4a4868] transition-colors">
-          <span className="text-sm">Today</span>
-          <img className="w-4 h-4" src="icon-dropdown.svg" alt="Dropdown" />
-        </button>
+
+        <div className="relative">
+          <button
+            className="flex items-center gap-2 py-2 px-3 bg-[#3d3b5eff] rounded-lg hover:bg-[#4a4868] transition-colors"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          >
+            <span className="text-sm">
+              {daysToShow[selectedDay]?.name || "Today"}
+            </span>
+            <img
+              className={`w-4 h-4 transition-transform ${
+                isDropdownOpen ? "rotate-180" : ""
+              }`}
+              src="icon-dropdown.svg"
+              alt="Dropdown"
+            />
+          </button>
+
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-40 bg-[#3d3b5eff] rounded-lg shadow-lg z-10">
+              {daysToShow.map((day) => (
+                <button
+                  key={day.index}
+                  className={`w-full text-left px-4 py-3 hover:bg-[#4a4868] transition-colors ${
+                    selectedDay === day.index ? "bg-[#4a4868] font-medium" : ""
+                  }`}
+                  onClick={() => handleDaySelect(day.index)}
+                >
+                  <span className="text-sm">{day.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="space-y-3">
-        {hours.slice(0, 8).map((hour, index) => (
+        {hours.map((hour, index) => (
           <div
             key={index}
             className="flex items-center justify-between py-3 px-4 bg-[#3d3b5eff] rounded-lg"
