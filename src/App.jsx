@@ -61,6 +61,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentDay, setCurrentDay] = useState(0);
   const [selectedDay, setSelectedDay] = useState(0);
+  const [selectedUnit, setSelectedUnit] = useState("metric");
 
   function handleCityClick(city) {
     setSearchTerm(city.name);
@@ -68,6 +69,14 @@ function App() {
     setLocation(city.name);
     setLatitude(city.latitude);
     setLongitude(city.longitude);
+  }
+
+  function convertTemperature(C, unit) {
+    return unit === "imperial" ? (C * 9) / 5 + 32 : C;
+  }
+
+  function getTemperatureUnit(unit) {
+    return unit === "metric" ? "°C" : "°F";
   }
 
   useEffect(
@@ -221,14 +230,23 @@ function App() {
   return (
     <div className="lg:py-5 min-h-screen bg-[#03012dff] text-white">
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <Header />
+        {location ? (
+          <Header
+            setSelectedUnit={setSelectedUnit}
+            selectedUnit={selectedUnit}
+          />
+        ) : (
+          ""
+        )}
       </div>
 
       <div className="max-w-7xl mx-auto px-4">
         <div className="lg:grid lg:grid-cols-12 lg:gap-6">
           <div className="lg:col-start-3 lg:col-span-8 space-y-6">
             <h1 className="text-4xl lg:text-5xl lg:py-10 font-bold text-center">
-              How's the sky looking today?
+              {location
+                ? "How's the sky looking today?"
+                : "Please enter a location"}
             </h1>
 
             <Search
@@ -247,33 +265,61 @@ function App() {
           <div className="lg:col-span-12">
             <div className="lg:grid lg:grid-cols-12 lg:gap-6 mt-6">
               <main className="lg:col-span-9 space-y-6">
-                <CurrentWeather
-                  location={location}
-                  currentDate={currentDate}
-                  weatherData={weatherData}
-                  selectedDay={selectedDay}
-                />
-                <CurrentWeatherMetrics
-                  currentHumidity={currentHumidity}
-                  currentWindSpeed={currentWindSpeed}
-                  currentPrecipitation={currentPrecipitation}
-                  feelsLike={feelsLike}
-                />
-                <DailyForecast
-                  dailyMax={dailyMax}
-                  dailyMin={dailyMin}
-                  dailyWeatherCodes={rawDailyWeatherCodes}
-                />
+                {location ? (
+                  <CurrentWeather
+                    location={location}
+                    currentDate={currentDate}
+                    weatherData={weatherData}
+                    selectedDay={selectedDay}
+                    selectedUnit={selectedUnit}
+                    addConvertTemperature={convertTemperature}
+                    addGetTemperatureUnit={getTemperatureUnit}
+                  />
+                ) : (
+                  ""
+                )}
+                {location ? (
+                  <CurrentWeatherMetrics
+                    currentHumidity={currentHumidity}
+                    currentWindSpeed={currentWindSpeed}
+                    currentPrecipitation={currentPrecipitation}
+                    feelsLike={feelsLike}
+                    selectedUnit={selectedUnit}
+                    addConvertTemperature={convertTemperature}
+                    addGetTemperatureUnit={getTemperatureUnit}
+                  />
+                ) : (
+                  ""
+                )}
+                {location ? (
+                  <DailyForecast
+                    dailyMax={dailyMax}
+                    dailyMin={dailyMin}
+                    dailyWeatherCodes={rawDailyWeatherCodes}
+                    selectedUnit={selectedUnit}
+                    addConvertTemperature={convertTemperature}
+                    addGetTemperatureUnit={getTemperatureUnit}
+                  />
+                ) : (
+                  ""
+                )}
               </main>
 
               <aside className="lg:col-span-3 mt-6 lg:my-auto">
-                <HourlyForecast
-                  currentdailyArrTime={currentDailyArrTime}
-                  currentdailyArrTemp={currentDailyArrTemp}
-                  hourlyWeatherCodes={rawHourlyWeatherCodes}
-                  selectedDay={selectedDay}
-                  setSelectedDay={setSelectedDay}
-                />
+                {location ? (
+                  <HourlyForecast
+                    currentdailyArrTime={currentDailyArrTime}
+                    currentdailyArrTemp={currentDailyArrTemp}
+                    hourlyWeatherCodes={rawHourlyWeatherCodes}
+                    selectedDay={selectedDay}
+                    setSelectedDay={setSelectedDay}
+                    selectedUnit={selectedUnit}
+                    addConvertTemperature={convertTemperature}
+                    addGetTemperatureUnit={getTemperatureUnit}
+                  />
+                ) : (
+                  ""
+                )}
               </aside>
             </div>
           </div>
@@ -285,11 +331,14 @@ function App() {
 
 export default App;
 
-function Header() {
+function Header({ selectedUnit, setSelectedUnit }) {
   return (
     <header className="flex justify-between items-center">
       <Logo />
-      <TempUnits />
+      <TempUnits
+        setSelectedUnit={setSelectedUnit}
+        selectedUnit={selectedUnit}
+      />
     </header>
   );
 }
@@ -302,125 +351,142 @@ function Logo() {
   );
 }
 
-function TempUnits() {
+function TempUnits({ selectedUnit, setSelectedUnit }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [selectedUnit, setSelectedUnit] = useState("metric");
 
   const handleUnitSelect = (unit) => {
     setSelectedUnit(unit);
-    setIsDropdownOpen(false);
+
+    // Delay closing the dropdown
+    setTimeout(() => {
+      setIsDropdownOpen(false);
+    }, 400);
   };
 
   function convertToFarhenheight(c) {
     return (c * 9) / 5 + 32;
   }
   return (
-    <div className="relative">
-      <button
-        className="flex items-center gap-2 py-2 px-3 bg-[#3d3b5eff] rounded-lg hover:bg-[#4a4868] transition-colors"
-        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-      >
-        <img className="w-5 h-5" src="icon-units.svg" alt="Temperature units" />
-        <span className="text-sm">Units</span>
-        <img
-          className={`w-4 h-4 transition-transform ${
-            isDropdownOpen ? "rotate-180" : ""
-          }`}
-          src="icon-dropdown.svg"
-          alt="Dropdown"
-        />
-      </button>
+    <div className="w-64 bg-[#272541ff] rounded-lg py-4 px-4">
+      <div className="flex justify-between items-center mb-4 relative">
+        <h2 className="text-xl font-semibold px-1">
+          {selectedUnit === "metric" ? "Celsius" : "Fahrenheit"}
+        </h2>
+        <div className="relative">
+          <button
+            className="flex items-center gap-2 py-2 px-3 bg-[#3d3b5eff] rounded-lg hover:bg-[#4a4868] transition-colors"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          >
+            <img
+              className="w-5 h-5"
+              src="icon-units.svg"
+              alt="Temperature units"
+            />
+            <span className="text-sm">Units</span>
+            <img
+              className={`w-4 h-4 transition-transform ${
+                isDropdownOpen ? "rotate-180" : ""
+              }`}
+              src="icon-dropdown.svg"
+              alt="Dropdown"
+            />
+          </button>
 
-      {isDropdownOpen && (
-        <div className="absolute right-0 mt-2 w-64 bg-[#3d3b5eff] rounded-lg shadow-lg z-10 p-4">
-          {/* Temperature */}
-          <div className="mb-4">
-            <h3 className="text-xs text-[#aeaeb7ff] uppercase mb-2">
-              Temperature
-            </h3>
-            <div className="flex gap-2">
-              <button
-                className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
-                  selectedUnit === "metric"
-                    ? "bg-[#4455daff] text-white"
-                    : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
-                }`}
-                onClick={() => handleUnitSelect("metric")}
-              >
-                °C
-              </button>
-              <button
-                className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
-                  selectedUnit === "imperial"
-                    ? "bg-[#4455daff] text-white"
-                    : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
-                }`}
-                onClick={() => handleUnitSelect("imperial")}
-              >
-                °F
-              </button>
-            </div>
-          </div>
+          {isDropdownOpen && (
+            <div
+              className="absolute right-0 mt-2 w-64 bg-[#3d3b5eff] rounded-lg 
+      shadow-lg z-10 p-4 transition-opacity duration-[400ms] ease-in-out"
+            >
+              {/* Temperature */}
+              <div className="mb-4">
+                <h3 className="text-xs text-[#aeaeb7ff] uppercase mb-2">
+                  Temperature
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
+                      selectedUnit === "metric"
+                        ? "bg-[#4455daff] text-white"
+                        : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
+                    }`}
+                    onClick={() => handleUnitSelect("metric")}
+                  >
+                    °C
+                  </button>
+                  <button
+                    className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
+                      selectedUnit === "imperial"
+                        ? "bg-[#4455daff] text-white"
+                        : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
+                    }`}
+                    onClick={() => handleUnitSelect("imperial")}
+                  >
+                    °F
+                  </button>
+                </div>
+              </div>
 
-          {/* Wind Speed */}
-          <div className="mb-4">
-            <h3 className="text-xs text-[#aeaeb7ff] uppercase mb-2">
-              Wind Speed
-            </h3>
-            <div className="flex gap-2">
-              <button
-                className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
-                  selectedUnit === "metric"
-                    ? "bg-[#4455daff] text-white"
-                    : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
-                }`}
-                onClick={() => handleUnitSelect("metric")}
-              >
-                km/h
-              </button>
-              <button
-                className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
-                  selectedUnit === "imperial"
-                    ? "bg-[#4455daff] text-white"
-                    : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
-                }`}
-                onClick={() => handleUnitSelect("imperial")}
-              >
-                mph
-              </button>
-            </div>
-          </div>
+              {/* Wind Speed */}
+              <div className="mb-4">
+                <h3 className="text-xs text-[#aeaeb7ff] uppercase mb-2">
+                  Wind Speed
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
+                      selectedUnit === "metric"
+                        ? "bg-[#4455daff] text-white"
+                        : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
+                    }`}
+                    onClick={() => handleUnitSelect("metric")}
+                  >
+                    km/h
+                  </button>
+                  <button
+                    className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
+                      selectedUnit === "imperial"
+                        ? "bg-[#4455daff] text-white"
+                        : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
+                    }`}
+                    onClick={() => handleUnitSelect("imperial")}
+                  >
+                    mph
+                  </button>
+                </div>
+              </div>
 
-          {/* Precipitation */}
-          <div>
-            <h3 className="text-xs text-[#aeaeb7ff] uppercase mb-2">
-              Precipitation
-            </h3>
-            <div className="flex gap-2">
-              <button
-                className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
-                  selectedUnit === "metric"
-                    ? "bg-[#4455daff] text-white"
-                    : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
-                }`}
-                onClick={() => handleUnitSelect("metric")}
-              >
-                mm
-              </button>
-              <button
-                className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
-                  selectedUnit === "imperial"
-                    ? "bg-[#4455daff] text-white"
-                    : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
-                }`}
-                onClick={() => handleUnitSelect("imperial")}
-              >
-                in
-              </button>
+              {/* Precipitation */}
+              <div>
+                <h3 className="text-xs text-[#aeaeb7ff] uppercase mb-2">
+                  Precipitation
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
+                      selectedUnit === "metric"
+                        ? "bg-[#4455daff] text-white"
+                        : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
+                    }`}
+                    onClick={() => handleUnitSelect("metric")}
+                  >
+                    mm
+                  </button>
+                  <button
+                    className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
+                      selectedUnit === "imperial"
+                        ? "bg-[#4455daff] text-white"
+                        : "bg-[#272541ff] text-gray-400 hover:bg-[#4a4868]"
+                    }`}
+                    onClick={() => handleUnitSelect("imperial")}
+                  >
+                    in
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -434,7 +500,15 @@ function Loader() {
   );
 }
 
-function CurrentWeather({ location, currentDate, weatherData, selectedDay }) {
+function CurrentWeather({
+  location,
+  currentDate,
+  weatherData,
+  selectedDay,
+  selectedUnit,
+  addConvertTemperature,
+  addGetTemperatureUnit,
+}) {
   const dailyMax = weatherData.daily?.temperature_2m_max || [];
   const dailyMin = weatherData.daily?.temperature_2m_min || [];
   const dailyCodes = weatherData.daily?.weather_code || [];
@@ -477,7 +551,11 @@ function CurrentWeather({ location, currentDate, weatherData, selectedDay }) {
       <div className="relative h-full p-6 flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">{location || "Select a city"}</h2>
-          <p className="text-sm text-gray-200 mt-1">{currentDate || ""}</p>
+          <p className="text-sm text-gray-200 mt-1">
+            {currentDate
+              ? currentDate.charAt(0).toUpperCase() + currentDate.slice(1)
+              : ""}
+          </p>{" "}
         </div>
 
         <div className="flex items-end justify-between">
@@ -489,7 +567,12 @@ function CurrentWeather({ location, currentDate, weatherData, selectedDay }) {
             />
             <div>
               <div className="text-6xl lg:text-7xl font-bold">
-                {currentTemp ? `${currentTemp} °C` : "--"}
+                {currentTemp
+                  ? `${addConvertTemperature(
+                      currentTemp.toFixed(0),
+                      selectedUnit
+                    )} ${addGetTemperatureUnit(selectedUnit)}`
+                  : "--"}
                 <p className="text-lg text-gray-200">{description}</p>
               </div>
             </div>
@@ -505,12 +588,51 @@ function CurrentWeatherMetrics({
   currentWindSpeed,
   currentPrecipitation,
   feelsLike,
+  selectedUnit,
+  addConvertTemperature,
+  addGetTemperatureUnit,
 }) {
+  function convertWindSpeed(speedKmh, unit) {
+    return unit === "imperial" ? speedKmh * 0.621371 : speedKmh;
+  }
+
+  function convertPrecipitation(rainMm, unit) {
+    return unit === "imperial" ? rainMm * 0.0393701 : rainMm;
+  }
+
+  function getWindSpeedUnit(unit) {
+    return unit === "metric" ? "km/h" : "mph";
+  }
+
+  function getPrecipitationUnit(unit) {
+    return unit === "metric" ? "mm" : "in";
+  }
   const metrics = [
-    { label: "Feels Like", value: `${feelsLike || "--"} °C` },
+    {
+      label: "Feels Like",
+      value: `${
+        feelsLike
+          ? addConvertTemperature(feelsLike, selectedUnit).toFixed(0)
+          : "--"
+      } ${addGetTemperatureUnit(selectedUnit)}`,
+    },
     { label: "Humidity", value: `${currentHumidity || "--"}%` },
-    { label: "Wind", value: `${currentWindSpeed || "--"} km/h` },
-    { label: "Precipitation", value: `${currentPrecipitation || "--"} mm` },
+    {
+      label: "Wind",
+      value: `${
+        currentWindSpeed
+          ? convertWindSpeed(currentWindSpeed, selectedUnit).toFixed(1)
+          : "--"
+      } ${getWindSpeedUnit(selectedUnit)}`,
+    },
+    {
+      label: "Precipitation",
+      value: `${
+        currentPrecipitation
+          ? convertPrecipitation(currentPrecipitation, selectedUnit).toFixed(1)
+          : "--"
+      } ${getPrecipitationUnit(selectedUnit)}`,
+    },
   ];
 
   return (
@@ -525,7 +647,14 @@ function CurrentWeatherMetrics({
   );
 }
 
-function DailyForecast({ dailyMax, dailyMin, dailyWeatherCodes }) {
+function DailyForecast({
+  dailyMax,
+  dailyMin,
+  dailyWeatherCodes,
+  selectedUnit,
+  addConvertTemperature,
+  addGetTemperatureUnit,
+}) {
   const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
@@ -549,10 +678,20 @@ function DailyForecast({ dailyMax, dailyMin, dailyWeatherCodes }) {
               />
               <p className="flex justify-center gap-2 text-sm">
                 <span className="font-semibold">
-                  {dailyMax[index] ? `${dailyMax[index]}°C` : "--"}
+                  {dailyMax[index]
+                    ? `${addConvertTemperature(
+                        dailyMax[index],
+                        selectedUnit
+                      ).toFixed(0)}${addGetTemperatureUnit(selectedUnit)}`
+                    : "--"}
                 </span>
                 <span className="text-[#aeaeb7ff]">
-                  {dailyMin[index] ? `${dailyMin[index]}°C` : "--"}
+                  {dailyMin[index]
+                    ? `${addConvertTemperature(
+                        dailyMin[index],
+                        selectedUnit
+                      ).toFixed(0)}${addGetTemperatureUnit(selectedUnit)}`
+                    : "--"}
                 </span>
               </p>
             </div>
@@ -569,9 +708,16 @@ function HourlyForecast({
   hourlyWeatherCodes,
   selectedDay,
   setSelectedDay,
+  selectedUnit,
+  addConvertTemperature,
+  addGetTemperatureUnit,
 }) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // Add this
 
+  const handleDaySelect = (dayIndex) => {
+    setSelectedDay(dayIndex);
+    setIsDropdownOpen(false);
+  };
   const days = [
     { name: "Today", index: 0 },
     { name: "Tomorrow", index: 1 },
@@ -583,11 +729,6 @@ function HourlyForecast({
   ];
 
   const daysToShow = days;
-
-  const handleDaySelect = (dayIndex) => {
-    setSelectedDay(dayIndex);
-    setIsDropdownOpen(false);
-  };
 
   const hours = currentdailyArrTime.map((time, index) => ({
     time: index === 0 && selectedDay === 0 ? "Now" : time,
@@ -645,7 +786,11 @@ function HourlyForecast({
             <div className="flex items-center gap-3">
               <img src={hour.icon} className="w-8 h-8" alt="Weather icon" />
               <span className="text-lg font-semibold w-12 text-right">
-                {hour.temp}°C
+                {hour.temp
+                  ? `${addConvertTemperature(hour.temp, selectedUnit).toFixed(
+                      0
+                    )}${addGetTemperatureUnit(selectedUnit)}`
+                  : "--"}
               </span>
             </div>
           </div>
