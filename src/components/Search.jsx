@@ -32,22 +32,27 @@ export default function Search({
   };
 
   return (
-    <div className="grid md:grid-cols-[1fr,auto] gap-4">
+    <div className="grid md:grid-cols-[1fr,auto] gap-4 items-start">
       <div className="relative">
-        <img
-          src="icon-search.svg"
-          className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-50"
-          alt="Search icon"
-        />
-        <input
-          className="w-full bg-[#3d3b5eff] text-white pl-12 px-4 py-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4455daff] placeholder:text-gray-400"
-          type="search"
-          placeholder="Search for a place..."
-          onChange={handleInputChange}
-          value={searchTerm}
-        />
+        {/* Input with icon - STATIC POSITION */}
+        <div className="relative">
+          <img
+            src="icon-search.svg"
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 opacity-50 pointer-events-none z-10"
+            alt="Search icon"
+          />
+          <input
+            className="w-full bg-[#3d3b5eff] text-white pl-12 px-4 py-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4455daff] placeholder:text-gray-400"
+            type="search"
+            placeholder="Search for a place..."
+            onChange={handleInputChange}
+            value={searchTerm}
+          />
+        </div>
+
+        {/* Dropdown - POSITIONED ABSOLUTELY BELOW, NOT AFFECTING PARENT */}
         {cities.length > 0 && (
-          <div className="bg-[#3d3b5eff] mt-2 rounded-lg">
+          <div className="absolute w-full left-0 top-[calc(100%+4px)] bg-[#3d3b5eff] rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
             {cities.map((city, index) => (
               <div
                 className="px-4 py-3 hover:bg-[#4a4868] cursor-pointer"
@@ -62,7 +67,7 @@ export default function Search({
           </div>
         )}
       </div>
-      <button className="w-full md:w-auto px-8  bg-[#4455daff] hover:bg-[#5566ebff] rounded-lg font-medium transition-colors">
+      <button className="w-full md:w-auto px-8 py-4 bg-[#4455daff] hover:bg-[#5566ebff] rounded-lg font-medium transition-colors">
         Search
       </button>
     </div>
