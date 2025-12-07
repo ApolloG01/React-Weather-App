@@ -568,9 +568,8 @@ function CurrentWeather({
             <div>
               <div className="text-6xl lg:text-7xl font-bold">
                 {currentTemp
-                  ? `${addConvertTemperature(
-                      currentTemp.toFixed(0),
-                      selectedUnit
+                  ? `${addConvertTemperature(currentTemp, selectedUnit).toFixed(
+                      0
                     )} ${addGetTemperatureUnit(selectedUnit)}`
                   : "--"}
                 <p className="text-lg text-gray-200">{description}</p>
