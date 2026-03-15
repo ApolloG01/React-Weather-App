@@ -1,16 +1,98 @@
-# React + Vite
+# React Weather App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, responsive weather application built with React. This project was originally created as a Frontend Mentor challenge to practice React skills, and has since been refactored for improved code organization, readability, and scalability. The app has been converted to TypeScript to enhance type safety and developer experience.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Current Weather Display**: Shows real-time weather conditions for searched locations
+- **Weather Metrics**: Detailed metrics including humidity, wind speed, pressure, and visibility
+- **Hourly Forecast**: 24-hour weather forecast with temperature trends
+- **Daily Forecast**: 7-day weather outlook
+- **Location Search**: Search for weather by city name
+- **Temperature Units**: Toggle between Celsius and Fahrenheit
+- **Responsive Design**: Optimized for desktop and mobile devices
+- **Loading States**: Smooth loading animations while fetching data
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **React 18** - UI library with hooks
+- **TypeScript** - Type-safe JavaScript
+- **Vite** - Fast build tool and development server
+- **Tailwind CSS** - Utility-first CSS framework
+- **ESLint** - Code linting
+- **Custom Fonts** - Bricolage Grotesque and DM Sans for typography
 
-## Expanding the ESLint configuration
+## Project Structure
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```
+src/
+├── components/          # Reusable UI components
+│   ├── CurrentWeather.tsx
+│   ├── CurrentWeatherMetrics.tsx
+│   ├── DailyForecast.tsx
+│   ├── Header.tsx
+│   ├── HourlyForecast.tsx
+│   ├── Loader.tsx
+│   ├── Logo.tsx
+│   ├── Search.tsx
+│   ├── TempUnits.tsx
+│   └── tempConversions.ts
+├── hooks/               # Custom React hooks
+│   └── useWeather.ts
+├── types/               # TypeScript type definitions
+│   └── types.ts
+├── utils/               # Utility functions
+│   └── weatherHelpers.ts
+├── App.tsx              # Main application component
+├── main.tsx             # Application entry point
+├── index.css            # Global styles
+└── global.d.ts          # Global type declarations
+```
+
+## Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/your-username/react-weather-app.git
+   cd react-weather-app
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Start the development server:
+
+   ```bash
+   npm run dev
+   ```
+
+4. Open your browser and navigate to `http://localhost:5173`
+
+## Usage
+
+1. Enter a city name in the search bar
+2. View current weather conditions and metrics
+3. Check hourly and daily forecasts
+4. Toggle between Celsius and Fahrenheit using the temperature unit switcher
+
+## API
+
+This app uses a weather API (e.g., OpenWeatherMap) to fetch weather data. You'll need to obtain an API key and configure it in the application.
+
+## Contributing
+
+This is a personal practice project, but feel free to fork and experiment!
+
+## Credits
+
+- Original design challenge from [Frontend Mentor](https://www.frontendmentor.io)
+- Weather data provided by weather API services
+- Fonts: [Bricolage Grotesque](https://fonts.google.com/specimen/Bricolage+Grotesque) and [DM Sans](https://fonts.google.com/specimen/DM+Sans)
+
+## License
+
+This project is for educational purposes only.
